@@ -145,24 +145,18 @@ app.get('/db/insert/message', (req, res) => {
         res.setHeader('Content-Type', 'application/json');
         res.send(JSON.stringify(data, null, 3));
     } else {
-        //var sql = 'SELECT * FROM chatlog WHERE message_id=?';
-        /*con.query(sql, [message_id], function (err, responce) {
-            if (err) throw err;
-            data = {
-                "message_id": responce[0]['message_id'],
-                "message": responce[0]['message'],
-                "message_date": responce[0]['message_date'],
-                "account": responce[0]['account'],
-                "user_id": responce[0]['user_id']
-            };
-            res.setHeader('Content-Type', 'application/json');
-            res.send(JSON.stringify(data, null, 3));
-        });*/
-        data = {
-            test: message
-        }
-        res.setHeader('Content-Type', 'application/json');
-        res.send(JSON.stringify(data, null, 3));
+        var sql = 'INSERT INTO chatlog (message, message_date, account, user_id) VALUES(?, ?, ?, ?)';
+        con.query(sql, [message, message_date, account, user_id], function (err, responce) {
+            if (err) {
+                throw err;
+            } else {
+                data = {
+                    responce
+                }
+                res.setHeader('Content-Type', 'application/json');
+                res.send(JSON.stringify(data, null, 3));
+            }
+        });
     }
 });
 
@@ -191,4 +185,4 @@ io.on('connection', (socket) => {
 
 server.listen(3000, () => {
     console.log('listening on *:3000');
-});
+}); 
