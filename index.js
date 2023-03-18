@@ -13,7 +13,7 @@ const io = new Server(server, {
 });
 //mysql connection
 
-    let con = mysql.createConnection({
+let con = mysql.createConnection({
     host: 'localhost',
     user: 'g4o2',
     database: 'sql12561191',
@@ -40,12 +40,9 @@ app.use('/\*', function (req, res, next) {
 //express api
 app.get('/', (req, res) => {
     data = [
-        { "message": "Welcome to the g4o2-chat api and socket.io server" },
-        { "directories": [
-                "/messages",
-                "/db/users",
-                "/db/messages",
-                "/db/chatlog"
+        { message: "Welcome to the g4o2-chat api and socket.io server" },
+        { directories: [
+                "/db"
             ]
         }
     ];
@@ -53,23 +50,9 @@ app.get('/', (req, res) => {
     res.send(JSON.stringify(data, null, 3));
 });
 
-app.get('/messages', (req, res) => {
-    fs.readFile('./chatlog.json', 'utf8', (err, data) => {
-        if (err) {
-            console.error(err);
-            return;
-        }
-        data = data + "]";
-        data = JSON.parse(data);
-        
-        res.setHeader('Content-Type', 'application/json');
-        res.send(JSON.stringify(data, null, 3));
-    });
-});
-
 app.get('/db', (req, res) => {
     data = [
-        {"directories": [
+        {directories: [
                 "/db/users",
                 "/db/messages",
                 "/db/chatlog"
@@ -80,11 +63,43 @@ app.get('/db', (req, res) => {
     res.send(JSON.stringify(data, null, 3));
 })
 
+app.get('/db/users', (req, res) => {
+    data = {
+        usage: "/db/users/(user id)"
+    };
+    res.setHeader('Content-Type', 'application/json');
+    res.send(JSON.stringify(data, null, 3));
+});
+
+app.get('/db/users/:userId', (req, res) => {
+    let user_id = req.params.userId;
+    var sql = 'SELECT * FROM account WHERE user_id=?';
+    con.query(sql, [user_id], function (err, responce) {
+        if (err) console.log(error);
+        let email;
+        if (responce[0]['show_email'] !== "True") {
+            email = "Hidden";
+        } else {
+            email = responce[0]['email']
+        }
+        data = {
+            user_id: responce[0]['user_id'],
+            username: responce[0]['username'],
+            name: responce[0]['name'],
+            email: email,
+            about: responce[0]['about'],
+            pfp: responce[0]['pfp']
+        };
+        res.setHeader('Content-Type', 'application/json');
+        res.send(JSON.stringify(data, null, 3));
+    });
+});
+
 app.get('/db/messages', (req, res) => {
     let message_id = req.query.id;
     if(!message_id) {
         data = {
-            "usage": "/db/messages?id=(message_id))"
+            usage: "/db/messages?id=(message_id))"
         }
         res.setHeader('Content-Type', 'application/json');
         res.send(JSON.stringify(data, null, 3));
@@ -105,37 +120,6 @@ app.get('/db/messages', (req, res) => {
     }
 });
 
-app.get('/db/users', (req, res) => {
-    data = {
-        "usage": "/db/users/(user id)"
-    };
-    res.setHeader('Content-Type', 'application/json');
-    res.send(JSON.stringify(data, null, 3));
-});
-
-app.get('/db/users/:userId', (req, res) => {
-    let user_id = req.params.userId;
-    var sql = 'SELECT * FROM account WHERE user_id=?';
-    con.query(sql, [user_id], function (err, responce) {
-        if (err) console.log(error);
-        let email;
-        if (responce[0]['show_email'] !== "True") {
-            email = "Hidden";
-        } else {
-            email = responce[0]['email']
-        }
-        data = {
-            "user_id": responce[0]['user_id'],
-            "username": responce[0]['username'],
-            "name": responce[0]['name'],
-            "email": email,
-            "about": responce[0]['about']
-        };
-        res.setHeader('Content-Type', 'application/json');
-        res.send(JSON.stringify(data, null, 3));
-    });
-});
-
 app.get('/db/chatlog', (req, res) => {
     var sql = 'SELECT * FROM chatlog';
     con.query(sql, function (err, responce) {
@@ -148,11 +132,45 @@ app.get('/db/chatlog', (req, res) => {
     });
 });
 
+
+app.get('/db/insert/message', (req, res) => {
+    let message = req.query.message;
+    let message_date = req.query.message_date;
+    let account = req.query.account;
+    let user_id = req.query.user_id;
+    if (!message) {
+        data = {
+            error: "Missing message parameter"
+        }
+        res.setHeader('Content-Type', 'application/json');
+        res.send(JSON.stringify(data, null, 3));
+    } else {
+        //var sql = 'SELECT * FROM chatlog WHERE message_id=?';
+        /*con.query(sql, [message_id], function (err, responce) {
+            if (err) throw err;
+            data = {
+                "message_id": responce[0]['message_id'],
+                "message": responce[0]['message'],
+                "message_date": responce[0]['message_date'],
+                "account": responce[0]['account'],
+                "user_id": responce[0]['user_id']
+            };
+            res.setHeader('Content-Type', 'application/json');
+            res.send(JSON.stringify(data, null, 3));
+        });*/
+        data = {
+            test: message
+        }
+        res.setHeader('Content-Type', 'application/json');
+        res.send(JSON.stringify(data, null, 3));
+    }
+});
+
 //socket.io server
 io.on('connection', (socket) => {
-    socket.on('user-connect', (username) => {
-        console.log(`user ${username} connected`);
-        io.emit('user-connect', username);
+    socket.on('user-connect', (user_id) => {
+        console.log(`User id ${user_id} connected`);
+        io.emit('user-connect', user_id);
     })
     socket.on('disconnect', () => {
         console.log('user disconnected');
@@ -160,6 +178,7 @@ io.on('connection', (socket) => {
     socket.on('message-submit', (messageDetails) => {
         io.emit('message-submit', messageDetails);
         console.log(messageDetails);
+        //do insert to db here later
         let data = JSON.stringify(messageDetails);
         data = ",\r\n" + data;
         fs.appendFile('./chatlog.json', data, err => {
