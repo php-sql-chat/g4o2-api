@@ -1,15 +1,13 @@
 const express = require('express');
 const helmet = require("helmet");
 const app = express();
-const fs = require('fs');
 const mysql = require('mysql')
 const http = require('http');
 const server = http.createServer(app);
 const { Server } = require("socket.io");
 const io = new Server(server, {
     cors: {
-        origin: ['https://php-sql-chat.maxhu787.repl.co:*']
-        // origin: ['http://localhost', 'http://127.0.0.1:5500']
+        origin: ['https://php-sql-chat.maxhu787.repl.co', 'http://localhost']
     }
 });
 /*
@@ -28,7 +26,6 @@ var con = mysql.createConnection({
     password: process.env.DB_PASS
 });
 
-/*
 app.use('/\*', function (req, res, next) {
     res.header("Access-Control-Allow-Origin", "*")
     res.header("Access-Control-Allow-Headers", "Content-Type")
@@ -36,20 +33,9 @@ app.use('/\*', function (req, res, next) {
     res.header("Access-Control-Allow-Credentials", "true")
     next()
 })
-*/
-app.use(helmet.contentSecurityPolicy());
-app.use(helmet.dnsPrefetchControl());
-app.use(helmet.frameguard());
-app.use(helmet.hidePoweredBy());
-app.use(helmet.hsts());
-app.use(helmet.ieNoOpen());
-app.use(helmet.noSniff());
-app.use(helmet.originAgentCluster());
-app.use(helmet.permittedCrossDomainPolicies());
-app.use(helmet.referrerPolicy());
-app.use(helmet.xssFilter());
 
-//express api
+//app.use(helmet());
+
 app.get('/', (req, res) => {
     data = [
         { message: "Welcome to the g4o2-chat api and socket.io server" },
@@ -180,7 +166,6 @@ app.get('/db/insert/message', (req, res) => {
     }
 });
 
-//socket.io server
 io.on('connection', (socket) => {
     socket.on('user-connect', (user_id) => {
         console.log(`User id ${user_id} connected`);
@@ -192,14 +177,6 @@ io.on('connection', (socket) => {
     socket.on('message-submit', (messageDetails) => {
         io.emit('message-submit', messageDetails);
         console.log(messageDetails);
-        //do insert to db here later
-        let data = JSON.stringify(messageDetails);
-        data = ",\r\n" + data;
-        fs.appendFile('./chatlog.json', data, err => {
-            if (err) {
-                console.error(err);
-            }
-        });
     });
 })
 
