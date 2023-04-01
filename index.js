@@ -10,22 +10,22 @@ const io = new Server(server, {
         origin: ['https://php-sql-chat.maxhu787.repl.co', 'http://localhost']
     }
 });
-/*
+
 let con = mysql.createConnection({
     host: 'localhost',
     user: 'g4o2',
     database: 'sql12561191',
     password: 'g4o2'
 });
-*/
 
+/*
 var con = mysql.createConnection({
     host: 'sql12.freemysqlhosting.net',
     user: 'sql12561191',
     database: 'sql12561191',
     password: process.env.DB_PASS
 });
-
+*/
 app.use('/\*', function (req, res, next) {
     res.header("Access-Control-Allow-Origin", "*")
     res.header("Access-Control-Allow-Headers", "Content-Type")
@@ -74,7 +74,17 @@ app.get('/db/users/:userId', (req, res) => {
     let user_id = req.params.userId;
     var sql = 'SELECT * FROM account WHERE user_id=?';
     con.query(sql, [user_id], function (err, responce) {
-        if (err) console.log(error);
+        if (err) {
+            throw err;
+        } else if (!responce.length) {
+            let responce = "no rows returned";
+            data = {
+                responce
+            }
+            res.setHeader('Content-Type', 'application/json');
+            res.send(JSON.stringify(data, null, 3));
+            return console.log(responce);
+        } 
         let email;
         if (responce[0]['show_email'] !== "True") {
             email = "Hidden";
@@ -122,7 +132,17 @@ app.get('/db/messages', (req, res) => {
 app.get('/db/chatlog', (req, res) => {
     var sql = 'SELECT * FROM chatlog';
     con.query(sql, function (err, responce) {
-        if (err) console.log(error);
+        if (err) {
+            throw err;
+        } else if (!responce.length) {
+            let responce = "no rows returned";
+            data = {
+                responce
+            }
+            res.setHeader('Content-Type', 'application/json');
+            res.send(JSON.stringify(data, null, 3));
+            return console.log(responce);
+        } 
         data = {
             responce
         };
