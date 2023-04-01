@@ -1,4 +1,5 @@
 const express = require('express');
+const helmet = require("helmet");
 const app = express();
 const fs = require('fs');
 const mysql = require('mysql')
@@ -7,28 +8,27 @@ const server = http.createServer(app);
 const { Server } = require("socket.io");
 const io = new Server(server, {
     cors: {
-        // origin: ['https://php-sql-chat.maxhu787.repl.co:*', 'http://localhost:*']
-        origin: ['http://localhost', 'http://127.0.0.1:5500']
+        origin: ['https://php-sql-chat.maxhu787.repl.co:*']
+        // origin: ['http://localhost', 'http://127.0.0.1:5500']
     }
 });
-//mysql connection
-
+/*
 let con = mysql.createConnection({
     host: 'localhost',
     user: 'g4o2',
     database: 'sql12561191',
     password: 'g4o2'
 });
+*/
 
-/*
 var con = mysql.createConnection({
     host: 'sql12.freemysqlhosting.net',
     user: 'sql12561191',
     database: 'sql12561191',
     password: process.env.DB_PASS
 });
-*/
 
+/*
 app.use('/\*', function (req, res, next) {
     res.header("Access-Control-Allow-Origin", "*")
     res.header("Access-Control-Allow-Headers", "Content-Type")
@@ -36,6 +36,18 @@ app.use('/\*', function (req, res, next) {
     res.header("Access-Control-Allow-Credentials", "true")
     next()
 })
+*/
+app.use(helmet.contentSecurityPolicy());
+app.use(helmet.dnsPrefetchControl());
+app.use(helmet.frameguard());
+app.use(helmet.hidePoweredBy());
+app.use(helmet.hsts());
+app.use(helmet.ieNoOpen());
+app.use(helmet.noSniff());
+app.use(helmet.originAgentCluster());
+app.use(helmet.permittedCrossDomainPolicies());
+app.use(helmet.referrerPolicy());
+app.use(helmet.xssFilter());
 
 //express api
 app.get('/', (req, res) => {
@@ -55,7 +67,8 @@ app.get('/db', (req, res) => {
         {directories: [
                 "/db/users",
                 "/db/messages",
-                "/db/chatlog"
+                "/db/chatlog",
+                "/db/insert"
             ]
         }
     ]
@@ -132,6 +145,13 @@ app.get('/db/chatlog', (req, res) => {
     });
 });
 
+app.get('/db/insert', (req, res) => {
+    data = {
+        usage: "/db/insert/message"
+    };
+    res.setHeader('Content-Type', 'application/json');
+    res.send(JSON.stringify(data, null, 3));
+});
 
 app.get('/db/insert/message', (req, res) => {
     let message = req.query.message;
@@ -145,8 +165,8 @@ app.get('/db/insert/message', (req, res) => {
         res.setHeader('Content-Type', 'application/json');
         res.send(JSON.stringify(data, null, 3));
     } else {
-        var sql = 'INSERT INTO chatlog (message, message_date, account, user_id) VALUES(?, ?, ?, ?)';
-        con.query(sql, [message, message_date, account, user_id], function (err, responce) {
+        var sql = 'INSERT INTO chatlog (message, message_date, user_id) VALUES(?, ?, ?)';
+        con.query(sql, [message, message_date, user_id], function (err, responce) {
             if (err) {
                 throw err;
             } else {
