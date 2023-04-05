@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const helmet = require("helmet");
 const app = express();
 const mysql = require('mysql')
@@ -10,22 +11,22 @@ const io = new Server(server, {
         origin: ['https://php-sql-chat.maxhu787.repl.co', 'http://localhost']
     }
 });
-
+/*
 let con = mysql.createConnection({
     host: 'localhost',
     user: 'g4o2',
     database: 'sql12561191',
     password: 'g4o2'
 });
+*/
 
-/*
 var con = mysql.createConnection({
     host: 'sql12.freemysqlhosting.net',
     user: 'sql12561191',
     database: 'sql12561191',
     password: process.env.DB_PASS
 });
-*/
+
 app.use('/\*', function (req, res, next) {
     res.header("Access-Control-Allow-Origin", "*")
     res.header("Access-Control-Allow-Headers", "Content-Type")
@@ -33,6 +34,9 @@ app.use('/\*', function (req, res, next) {
     res.header("Access-Control-Allow-Credentials", "true")
     next()
 })
+app.use(cors({
+    origin: 'https://php-sql-chat.maxhu787.repl.co/'
+}));
 
 
 //app.use(helmet());
