@@ -10,22 +10,22 @@ const io = new Server(server, {
         origin: ['https://php-sql-chat.maxhu787.repl.co', 'http://localhost']
     }
 });
-/*
+
 let con = mysql.createConnection({
     host: 'localhost',
     user: 'g4o2',
     database: 'sql12561191',
     password: 'g4o2'
 });
-*/
 
+/*
 var con = mysql.createConnection({
     host: 'sql12.freemysqlhosting.net',
     user: 'sql12561191',
     database: 'sql12561191',
     password: process.env.DB_PASS
 });
-
+*/
 app.use('/\*', function (req, res, next) {
     res.header("Access-Control-Allow-Origin", "*")
     res.header("Access-Control-Allow-Headers", "Content-Type")
@@ -63,11 +63,25 @@ app.get('/db', (req, res) => {
 })
 
 app.get('/db/users', (req, res) => {
-    data = {
-        usage: "/db/users/(user id)"
-    };
-    res.setHeader('Content-Type', 'application/json');
-    res.send(JSON.stringify(data, null, 3));
+    var sql = 'SELECT * FROM account;';
+    con.query(sql, function (err, responce) {
+        if (err) {
+            throw err;
+        } else if (!responce.length) {
+            let responce = "no rows returned";
+            data = {
+                responce
+            }
+            res.setHeader('Content-Type', 'application/json');
+            res.send(JSON.stringify(data, null, 3));
+            return console.log(responce);
+        }
+        data = {
+            responce
+        };
+        res.setHeader('Content-Type', 'application/json');
+        res.send(JSON.stringify(data, null, 3));    
+    })
 });
 
 app.get('/db/users/:userId', (req, res) => {
@@ -130,7 +144,7 @@ app.get('/db/messages', (req, res) => {
 });
 
 app.get('/db/chatlog', (req, res) => {
-    var sql = 'SELECT * FROM chatlog';
+    var sql = 'SELECT * FROM chatlog INNER JOIN account on chatlog.user_id = account.user_id; ';
     con.query(sql, function (err, responce) {
         if (err) {
             throw err;
@@ -195,8 +209,23 @@ io.on('connection', (socket) => {
         console.log('user disconnected');
     });
     socket.on('message-submit', (messageDetails) => {
-        io.emit('message-submit', messageDetails);
-        console.log(messageDetails);
+        var sql = 'INSERT INTO chatlog (message, message_date, user_id) VALUES(?, ?, ?)';
+        con.query(sql, [messageDetails['message'], messageDetails['message_date'], messageDetails['user_id']], function (err, responce) {
+            if (err) {
+                throw err;
+            }
+        });
+
+        var sqlt = 'SELECT * FROM chatlog INNER JOIN account ON chatlog.user_id = account.user_id ORDER BY message_id DESC LIMIT 1;';
+        con.query(sqlt, function (err, responce) {
+            if (err) {
+                throw err;
+            } else if (!responce.length) {
+                console.log("no rows returned");
+            }
+            io.emit('message-submit', responce[0]);
+            console.log(responce);
+        });
     });
 })
 
