@@ -6,27 +6,30 @@ const mysql = require('mysql')
 const http = require('http');
 const server = http.createServer(app);
 const { Server } = require("socket.io");
-const chat_url = 'https://php-sql-chat.maxhu787.repl.co';
-// const chat_url = 'http://localhost';
-const io = new Server(server, {
-    cors: {
-        origin: [chat_url]
-    }
-});
-/*
+// const host = 'self';
+const host = 'repl';
+let chat_url = 'https://php-sql-chat.maxhu787.repl.co';
 let con = mysql.createConnection({
-    host: 'localhost',
-    user: 'g4o2',
-    database: 'sql12561191',
-    password: 'g4o2'
-});
-*/
-
-var con = mysql.createConnection({
     host: 'sql12.freemysqlhosting.net',
     user: 'sql12561191',
     database: 'sql12561191',
     password: process.env.DB_PASS
+});
+
+if(host === 'self') {
+    con = mysql.createConnection({
+        host: 'localhost',
+        user: 'g4o2',
+        database: 'sql12561191',
+        password: 'g4o2'
+    });
+    chat_url = 'http://localhost';
+}
+
+const io = new Server(server, {
+    cors: {
+        origin: [chat_url]
+    }
 });
 
 app.use(cors({
@@ -52,8 +55,7 @@ app.get('/db', (req, res) => {
         {directories: [
                 "/db/users",
                 "/db/messages",
-                "/db/chatlog",
-                "/db/insert"
+                "/db/chatlog"
             ]
         }
     ]
@@ -165,33 +167,57 @@ app.get('/db/chatlog', (req, res) => {
 });
 
 io.on('connection', (socket) => {
+    const userTokens = new Map();
+    const msg_limit = 40;
+
     socket.on('user-connect', (user_id) => {
         console.log(`User id ${user_id} connected`);
         io.emit('user-connect', user_id);
-    })
+
+        userTokens.set(user_id, msg_limit);
+    });
+
     socket.on('disconnect', () => {
         console.log('user disconnected');
     });
-    socket.on('message-submit', (messageDetails) => {
-        var sql = 'INSERT INTO chatlog (message, message_date, user_id) VALUES(?, ?, ?)';
-        con.query(sql, [messageDetails['message'], messageDetails['message_date'], messageDetails['user_id']], function (err, responce) {
-            if (err) {
-                throw err;
-            }
-        });
 
-        var sqlt = 'SELECT * FROM chatlog INNER JOIN account ON chatlog.user_id = account.user_id ORDER BY message_id DESC LIMIT 1;';
-        con.query(sqlt, function (err, responce) {
-            if (err) {
-                throw err;
-            } else if (!responce.length) {
-                console.log("no rows returned");
-            }
-            io.emit('message-submit', responce[0]);
-            console.log(responce);
-        });
+    socket.on('message-submit', (messageDetails) => {
+        const user_id = messageDetails['user_id'];
+
+        if (userTokens.get(user_id) > 0) {
+            userTokens.set(user_id, userTokens.get(user_id) - 1);
+
+            var sql = 'INSERT INTO chatlog (message, message_date, user_id) VALUES(?, ?, ?)';
+            con.query(sql, [messageDetails['message'], messageDetails['message_date'], messageDetails['user_id']], function (err, responce) {
+                if (err) {
+                    throw err;
+                }
+            });
+
+            var sqlt = 'SELECT * FROM chatlog INNER JOIN account ON chatlog.user_id = account.user_id ORDER BY message_id DESC LIMIT 1;';
+            con.query(sqlt, function (err, responce) {
+                if (err) {
+                    throw err;
+                } else if (!responce.length) {
+                    console.log("no rows returned");
+                }
+                io.emit('message-submit', responce[0]);
+                console.log(responce);
+            });
+        } else {
+            // const errorMessage = `User id ${user_id} has exceeded the rate limit`;
+            const error = 429;
+            socket.emit('message-error', error);
+        }
     });
+
+    setInterval(() => {
+        userTokens.forEach((value, key) => {
+            userTokens.set(key, msg_limit);
+        });
+    }, 60 * 1000);
 })
+
 
 server.listen(3000, () => {
     console.log('listening on *:3000');
