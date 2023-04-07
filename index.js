@@ -6,9 +6,11 @@ const mysql = require('mysql')
 const http = require('http');
 const server = http.createServer(app);
 const { Server } = require("socket.io");
+const chat_url = 'https://php-sql-chat.maxhu787.repl.co';
+// const chat_url = 'http://localhost';
 const io = new Server(server, {
     cors: {
-        origin: ['https://php-sql-chat.maxhu787.repl.co', 'http://localhost']
+        origin: [chat_url]
     }
 });
 /*
@@ -27,19 +29,11 @@ var con = mysql.createConnection({
     password: process.env.DB_PASS
 });
 
-app.use('/\*', function (req, res, next) {
-    res.header("Access-Control-Allow-Origin", "*")
-    res.header("Access-Control-Allow-Headers", "Content-Type")
-    res.header("Access-Control-Allow-Methods", "GET, POST, PUT")
-    res.header("Access-Control-Allow-Credentials", "true")
-    next()
-})
 app.use(cors({
-    origin: 'https://php-sql-chat.maxhu787.repl.co/'
+    origin: chat_url
 }));
 
-
-//app.use(helmet());
+// app.use(helmet());
 
 app.get('/', (req, res) => {
     data = [
@@ -168,41 +162,6 @@ app.get('/db/chatlog', (req, res) => {
         res.setHeader('Content-Type', 'application/json');
         res.send(JSON.stringify(data, null, 3));
     });
-});
-
-app.get('/db/insert', (req, res) => {
-    data = {
-        usage: "/db/insert/message"
-    };
-    res.setHeader('Content-Type', 'application/json');
-    res.send(JSON.stringify(data, null, 3));
-});
-
-app.get('/db/insert/message', (req, res) => {
-    let message = req.query.message;
-    let message_date = req.query.message_date;
-    let account = req.query.account;
-    let user_id = req.query.user_id;
-    if (!message) {
-        data = {
-            error: "Missing message parameter"
-        }
-        res.setHeader('Content-Type', 'application/json');
-        res.send(JSON.stringify(data, null, 3));
-    } else {
-        var sql = 'INSERT INTO chatlog (message, message_date, user_id) VALUES(?, ?, ?)';
-        con.query(sql, [message, message_date, user_id], function (err, responce) {
-            if (err) {
-                throw err;
-            } else {
-                data = {
-                    responce
-                }
-                res.setHeader('Content-Type', 'application/json');
-                res.send(JSON.stringify(data, null, 3));
-            }
-        });
-    }
 });
 
 io.on('connection', (socket) => {
