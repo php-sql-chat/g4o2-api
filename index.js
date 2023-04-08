@@ -120,31 +120,6 @@ app.get('/db/users/:userId', (req, res) => {
 });
 
 app.get('/db/messages', (req, res) => {
-    let message_id = req.query.id;
-    if(!message_id) {
-        data = {
-            usage: "/db/messages?id=(message_id))"
-        }
-        res.setHeader('Content-Type', 'application/json');
-        res.send(JSON.stringify(data, null, 3));
-    } else {
-        var sql = 'SELECT * FROM chatlog WHERE message_id=?';
-        con.query(sql, [message_id], function (err, responce) {
-            if (err) throw err;
-            data = {
-                "message_id": responce[0]['message_id'],
-                "message": responce[0]['message'],
-                "message_date": responce[0]['message_date'],
-                "account": responce[0]['account'],
-                "user_id": responce[0]['user_id']
-            };
-            res.setHeader('Content-Type', 'application/json');
-            res.send(JSON.stringify(data, null, 3));
-        });
-    }
-});
-
-app.get('/db/chatlog', (req, res) => {
     var sql = 'SELECT * FROM chatlog INNER JOIN account on chatlog.user_id = account.user_id; ';
     con.query(sql, function (err, responce) {
         if (err) {
@@ -166,9 +141,49 @@ app.get('/db/chatlog', (req, res) => {
     });
 });
 
+app.get('/db/messages/:messageId', (req, res) => {
+    // let message_id = req.query.id;
+    let message_id = req.params.messageId;
+    var sql = 'SELECT * FROM chatlog WHERE message_id=?';
+    con.query(sql, [message_id], function (err, responce) {
+        if (err) throw err;
+        data = {
+            "message_id": responce[0]['message_id'],
+            "message": responce[0]['message'],
+            "message_date": responce[0]['message_date'],
+            "account": responce[0]['account'],
+            "user_id": responce[0]['user_id']
+        };
+        res.setHeader('Content-Type', 'application/json');
+        res.send(JSON.stringify(data, null, 3));
+    });
+});
+
+app.get('/db/msgll', (req, res) => {
+    let start = parseInt(req.query.start);
+    if (!start) {
+        data = {
+            err: "Missing start parameter"
+        }
+        res.setHeader('Content-Type', 'application/json');
+        res.send(JSON.stringify(data, null, 3));
+    } else {
+        start -= 1;
+        var sql = 'SELECT * FROM chatlog INNER JOIN account ON chatlog.user_id = account.user_id ORDER BY message_id ASC LIMIT ?, 50';
+        con.query(sql, [start], function (err, responce) {
+            if (err) throw err;
+            data = {
+                responce
+            };
+            res.setHeader('Content-Type', 'application/json');
+            res.send(JSON.stringify(data, null, 3));
+        });
+    }
+})
+
 io.on('connection', (socket) => {
     const userTokens = new Map();
-    const msg_limit = 40;
+    const msg_limit = 20;
 
     socket.on('user-connect', (user_id) => {
         console.log(`User id ${user_id} connected`);
@@ -210,6 +225,18 @@ io.on('connection', (socket) => {
             socket.emit('message-error', error);
         }
     });
+
+    socket.on('load-message', (index) => {
+        var sql = 'SELECT * FROM chatlog INNER JOIN account ON chatlog.user_id = account.user_id ORDER BY message_id DESC LIMIT ?, 10';
+        con.query(sql, [index-=1], function (err, responce) {
+            if (err) {
+                throw err;
+            } else if (!responce.length) {
+                console.log("no rows returned");
+            }
+            socket.emit('load-message', (responce))
+        });
+    })
 
     setInterval(() => {
         userTokens.forEach((value, key) => {
