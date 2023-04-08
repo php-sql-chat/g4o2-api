@@ -169,7 +169,7 @@ app.get('/db/msgll', (req, res) => {
         res.send(JSON.stringify(data, null, 3));
     } else {
         start -= 1;
-        var sql = 'SELECT * FROM chatlog INNER JOIN account ON chatlog.user_id = account.user_id ORDER BY message_id ASC LIMIT ?, 50';
+        var sql = 'SELECT * FROM chatlog INNER JOIN account ON chatlog.user_id = account.user_id ORDER BY message_id ASC LIMIT ?, 20';
         con.query(sql, [start], function (err, responce) {
             if (err) throw err;
             data = {
@@ -227,7 +227,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('load-message', (index) => {
-        var sql = 'SELECT * FROM chatlog INNER JOIN account ON chatlog.user_id = account.user_id ORDER BY message_id DESC LIMIT ?, 10';
+        var sql = 'SELECT * FROM chatlog INNER JOIN account ON chatlog.user_id = account.user_id ORDER BY message_id DESC LIMIT ?, 25';
         con.query(sql, [index-=1], function (err, responce) {
             if (err) {
                 throw err;
