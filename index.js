@@ -2,8 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require("helmet");
 const path = require('path');
-const mysql = require('mysql')
+const mysql = require('mysql');
 const multer = require('multer');
+const rateLimit = require('express-rate-limit');
 const http = require('http');
 const app = express();
 const server = http.createServer(app);
@@ -16,6 +17,13 @@ let con = mysql.createConnection({
     user: 'sql12561191',
     database: 'sql12561191',
     password: process.env.DB_PASS
+});
+
+const limiter = rateLimit({
+    windowMs: 10 * 60 * 1000, // 10 minute window
+    max: 20, // limit each IP to 20 requests per windowMs,
+    expire: 1000 * 60 * 60,
+    message: 'Rate limit exceeded (20 images per 10 minutes)'
 });
 
 if(host === 'self') {
@@ -67,7 +75,7 @@ app.get('/uploads/:filename', (req, res) => {
     });
 });
 
-app.post('/upload-image', upload.single('image'), (req, res) => {
+app.post('/upload-image', limiter, upload.single('image'), (req, res) => {
     if (!req.file) {
         return res.status(400).send('No image uploaded.');
     }
@@ -258,6 +266,36 @@ io.on('connection', (socket) => {
                     console.log("no rows returned");
                 }
                 io.emit('message-submit', responce[0]);
+                console.log(responce);
+            });
+        } else {
+            // const errorMessage = `User id ${user_id} has exceeded the rate limit`;
+            const error = 429;
+            socket.emit('message-error', error);
+        }
+    });
+
+    socket.on('image-submit', (messageDetails) => {
+        const user_id = messageDetails['user_id'];
+
+        if (userTokens.get(user_id) > 0) {
+            userTokens.set(user_id, userTokens.get(user_id) - 1);
+
+            var sql = 'INSERT INTO chatlog (message, message_date, user_id) VALUES(?, ?, ?)';
+            con.query(sql, [messageDetails['message'], messageDetails['message_date'], messageDetails['user_id']], function (err, responce) {
+                if (err) {
+                    throw err;
+                }
+            });
+
+            var sqlt = 'SELECT * FROM chatlog INNER JOIN account ON chatlog.user_id = account.user_id ORDER BY message_id DESC LIMIT 1;';
+            con.query(sqlt, function (err, responce) {
+                if (err) {
+                    throw err;
+                } else if (!responce.length) {
+                    console.log("no rows returned");
+                }
+                io.emit('image-submit', responce[0]);
                 console.log(responce);
             });
         } else {
