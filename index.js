@@ -9,8 +9,8 @@ const http = require('http');
 const app = express();
 const server = http.createServer(app);
 const { Server } = require("socket.io");
-const host = 'self';
-// const host = 'repl';
+// const host = 'self';
+const host = 'repl';
 let chat_url = 'https://php-sql-chat.maxhu787.repl.co';
 let con = mysql.createConnection({
     host: 'sql12.freemysqlhosting.net',
