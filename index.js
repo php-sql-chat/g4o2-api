@@ -9,8 +9,8 @@ const http = require('http');
 const app = express();
 const server = http.createServer(app);
 const { Server } = require("socket.io");
-// const host = 'self';
-const host = 'repl';
+const host = 'self';
+// const host = 'repl';
 let chat_url = 'https://php-sql-chat.maxhu787.repl.co';
 let con = mysql.createConnection({
     host: 'sql12.freemysqlhosting.net',
@@ -58,6 +58,22 @@ const upload = multer({
     limits: { fileSize: 1024 * 1024 * 5 }
 });
 
+const pfpstorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, './pfp');
+    },
+    filename: (req, file, cb) => {
+        const fileName = file.fieldname + '-' + Date.now() + path.extname(file.originalname);
+        cb(null, fileName);
+        return fileName;
+    }
+});
+
+const pfpupload = multer({
+    storage: pfpstorage,
+    limits: { fileSize: 1024 * 1024 * 5 }
+});
+
 app.use(cors({
     origin: chat_url
 }));
@@ -76,6 +92,29 @@ app.get('/uploads/:filename', (req, res) => {
 });
 
 app.post('/upload-image', limiter, upload.single('image'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).send('No image uploaded.');
+    }
+    const filename = req.file.filename;
+    data = {
+        filename
+    }
+    res.setHeader('Content-Type', 'application/json');
+    res.send(JSON.stringify(data, null, 3));
+});
+
+app.get('/pfp/:filename', (req, res) => {
+    const filename = req.params.filename;
+    res.sendFile(filename, { root: './pfp' }, (err) => {
+        if (err) {
+            console.error(err);
+            // res.status(404).send('File not found');
+            res.redirect("https://http.cat/404");
+        }
+    });
+});
+
+app.post('/pfp', limiter, pfpupload.single('image'), (req, res) => {
     if (!req.file) {
         return res.status(400).send('No image uploaded.');
     }
