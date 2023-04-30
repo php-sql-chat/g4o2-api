@@ -9,8 +9,9 @@ const http = require('http');
 const app = express();
 const server = http.createServer(app);
 const { Server } = require("socket.io");
-// const host = 'self';
-const host = 'repl';
+const crypto = require("crypto");
+const host = 'self';
+// npm rconst host = 'repl';
 let chat_url = 'https://php-sql-chat.maxhu787.repl.co';
 let con = mysql.createConnection({
     host: 'sql12.freemysqlhosting.net',
@@ -26,7 +27,7 @@ const limiter = rateLimit({
     message: 'Rate limit exceeded (20 images per 10 minutes)'
 });
 
-if(host === 'self') {
+if (host === 'self') {
     con = mysql.createConnection({
         host: 'localhost',
         user: 'g4o2',
@@ -49,7 +50,7 @@ const storage = multer.diskStorage({
     filename: (req, file, cb) => {
         const fileName = file.fieldname + '-' + Date.now() + path.extname(file.originalname);
         cb(null, fileName);
-        return fileName;    
+        return fileName;
     }
 });
 
@@ -129,7 +130,8 @@ app.post('/pfp', limiter, pfpupload.single('image'), (req, res) => {
 app.get('/', (req, res) => {
     data = [
         { message: "Welcome to the g4o2-chat api and socket.io server" },
-        { directories: [
+        {
+            directories: [
                 "/db"
             ]
         }
@@ -140,7 +142,8 @@ app.get('/', (req, res) => {
 
 app.get('/db', (req, res) => {
     data = [
-        {directories: [
+        {
+            directories: [
                 "/db/users",
                 "/db/messages",
                 "/db/chatlog"
@@ -169,7 +172,7 @@ app.get('/db/users', (req, res) => {
             responce
         };
         res.setHeader('Content-Type', 'application/json');
-        res.send(JSON.stringify(data, null, 3));    
+        res.send(JSON.stringify(data, null, 3));
     })
 });
 
@@ -187,7 +190,7 @@ app.get('/db/users/:userId', (req, res) => {
             res.setHeader('Content-Type', 'application/json');
             res.send(JSON.stringify(data, null, 3));
             return console.log(responce);
-        } 
+        }
         let email;
         if (responce[0]['show_email'] !== "True") {
             email = "Hidden";
@@ -220,7 +223,7 @@ app.get('/db/messages', (req, res) => {
             res.setHeader('Content-Type', 'application/json');
             res.send(JSON.stringify(data, null, 3));
             return console.log(responce);
-        } 
+        }
         data = {
             responce
         };
@@ -269,9 +272,69 @@ app.get('/db/msgll', (req, res) => {
     }
 })
 
+app.get('/send', (req, res) => {
+    let message = req.query.message;
+    let message_date = new Date().toUTCString();
+    let usr = req.query.usr;
+    let pw = req.query.pw;
+    let user_id = 0;
+
+    if(message === undefined || usr === undefined || pw === undefined) {
+        data = {
+            usage: "/send?message=<message>&usr=<username>&pw=<password>"
+        }
+        res.setHeader('Content-Type', 'application/json');
+        res.send(JSON.stringify(data, null, 3));
+    } else {
+
+        const salt = process.env.SALT;
+    const hash = crypto.createHash("md5").update(salt + pw).digest("hex");
+
+    var sql = 'SELECT password, user_id FROM account WHERE username=?';
+    con.query(sql, [usr], function (err, responce) {
+        if (err) {
+            throw err;
+        }
+        temp = responce[0]['password']
+        user_id = responce[0]['user_id']
+
+        if (hash === temp) {
+            var sql = 'INSERT INTO chatlog (message, message_date, user_id) VALUES(?, ?, ?)';
+            con.query(sql, [message, message_date, user_id], function (err, responce) {
+                if (err) {
+                    throw err;
+                }
+            });
+
+            var sqlt = 'SELECT * FROM chatlog INNER JOIN account ON chatlog.user_id = account.user_id ORDER BY message_id DESC LIMIT 1;';
+            con.query(sqlt, function (err, responce) {
+                if (err) {
+                    throw err;
+                } else if (!responce.length) {
+                    console.log("no rows returned");
+                }
+                console.log(responce);
+                data = {
+                    success: "message submitted",
+                    responce
+                }
+                res.setHeader('Content-Type', 'application/json');
+                res.send(JSON.stringify(data, null, 3));
+            });
+        } else {
+            responce = {
+                err: "wrong password"
+            }
+            res.setHeader('Content-Type', 'application/json');
+            res.send(JSON.stringify(responce, null, 3));
+        }
+    });
+}
+})
+
 io.on('connection', (socket) => {
     const userTokens = new Map();
-    const msg_limit = 20;
+    const msg_limit = 25;
 
     socket.on('user-connect', (user_id) => {
         console.log(`User id ${user_id} connected`);
@@ -346,7 +409,7 @@ io.on('connection', (socket) => {
 
     socket.on('load-message', (index) => {
         var sql = 'SELECT * FROM chatlog INNER JOIN account ON chatlog.user_id = account.user_id ORDER BY message_id DESC LIMIT ?, 25';
-        con.query(sql, [index-=1], function (err, responce) {
+        con.query(sql, [index -= 1], function (err, responce) {
             if (err) {
                 throw err;
             } else if (!responce.length) {
