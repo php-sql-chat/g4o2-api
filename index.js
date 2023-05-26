@@ -10,13 +10,13 @@ const app = express();
 const server = http.createServer(app);
 const { Server } = require("socket.io");
 const crypto = require("crypto");
-const host = 'self';
-// npm rconst host = 'repl';
-let chat_url = 'https://php-sql-chat.maxhu787.repl.co';
+// const host = 'self';
+const host = 'cloud';
+let chat_url = 'https://g4o2.idx.tw';
 let con = mysql.createConnection({
-    host: 'sql12.freemysqlhosting.net',
-    user: 'sql12561191',
-    database: 'sql12561191',
+    host: 'localhost',
+    user: 'g4o2',
+    database: 'g4o2',
     password: process.env.DB_PASS
 });
 
@@ -428,5 +428,5 @@ io.on('connection', (socket) => {
 
 
 server.listen(3000, () => {
-    console.log('listening on *:3000');
+    console.log('listening on *:4000');
 }); 
