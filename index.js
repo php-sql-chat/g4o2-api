@@ -1,13 +1,14 @@
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
 const helmet = require("helmet");
 const path = require('path');
 const mysql = require('mysql');
 const multer = require('multer');
 const rateLimit = require('express-rate-limit');
-const http = require('http');
+const https = require('https');
 const app = express();
-const server = http.createServer(app);
+const server = https.createServer(app);
 const { Server } = require("socket.io");
 const crypto = require("crypto");
 // const host = 'self';
@@ -19,6 +20,11 @@ let con = mysql.createConnection({
     database: 'g4o2',
     password: process.env.DB_PASS
 });
+
+const options = {
+    key: fs.readFileSync('ssl/private-key.pem'),
+    cert: fs.readFileSync('ssl/certificate.pem')
+};
 
 const limiter = rateLimit({
     windowMs: 10 * 60 * 1000, // 10 minute window
@@ -427,6 +433,6 @@ io.on('connection', (socket) => {
 })
 
 
-server.listen(3000, () => {
-    console.log('listening on *:3000');
+server.listen(4000, () => {
+    console.log('listening on *:4000');
 }); 
